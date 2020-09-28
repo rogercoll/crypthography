@@ -1,12 +1,12 @@
 package main
 
 import (
+	"crypto/rc4"
+	"fmt"
+	"log"
+	"math/rand"
 	"os/exec"
 	"time"
-    "crypto/rc4"
-    "fmt"
-    "log"
-    "math/rand"
 )
 
 func doEncryption(iv []byte, randPreKey []byte, pltext []byte) ([]byte, []byte) {
@@ -30,11 +30,11 @@ func doEncryption(iv []byte, randPreKey []byte, pltext []byte) ([]byte, []byte) 
 func getM0(iv []byte, randPreKey []byte, pltext []byte) (byte, int) {
 	var most_m0 = make(map[byte]int, 256)
 	for i := 0; i < 256; i++ {
-			cipher, fullKey := doEncryption(iv, randPreKey, pltext)
-			most_m0[cipher[0]^(fullKey[2] + 0x02)] += 1
-			iv[2] = iv[2] + 0x01
+		cipher, fullKey := doEncryption(iv, randPreKey, pltext)
+		most_m0[cipher[0]^(fullKey[2]+0x02)] += 1
+		iv[2] = iv[2] + 0x01
 	}
-	max := 0;
+	max := 0
 	var high_m0 byte
 	for m0, value := range most_m0 {
 		if value > max {
@@ -46,7 +46,8 @@ func getM0(iv []byte, randPreKey []byte, pltext []byte) (byte, int) {
 }
 
 func main() {
-	iv := []byte{0x01,0xff,0x00}
+	fmt.Printf("\n------	Running Test	------\n")
+	iv := []byte{0x01, 0xff, 0x00}
 	rand.Seed(time.Now().UnixNano())
 	randPreKey := make([]byte, 13)
 	rand.Read(randPreKey)
@@ -67,15 +68,15 @@ func main() {
 	for j = 0x00; j < 0x0d; j = j + 0x01 {
 		fmt.Printf("Guessing k[%v] ... ", j)
 		var most_k0 = make(map[byte]int, 256)
-		iv2 := []byte{0x03,0xff,0x00}
-		dyn = dyn+j+0x03
+		iv2 := []byte{0x03, 0xff, 0x00}
+		dyn = dyn + j + 0x03
 		iv2[0] = iv2[0] + j
-		for i:= 0; i < 256; i++ {
+		for i := 0; i < 256; i++ {
 			cipher2, fullKey2 := doEncryption(iv2, randPreKey, pltext)
-			most_k0[((cipher2[0]^m0)-fullKey2[2]-dyn)] += 1
+			most_k0[((cipher2[0] ^ m0) - fullKey2[2] - dyn)] += 1
 			iv2[2] = iv2[2] + 0x01
 		}
-		max2 := 0;
+		max2 := 0
 		var high_k0 byte
 		for k0, value := range most_k0 {
 			if value > max2 {
@@ -84,7 +85,7 @@ func main() {
 			}
 		}
 		fmt.Println("done")
-		fmt.Printf("Guessed k[%v]=%v (with freq. %v)   -   ",j, high_k0, max2)
+		fmt.Printf("Guessed k[%v]=%v (with freq. %v)   -   ", j, high_k0, max2)
 		if high_k0 == randPreKey[j] {
 			fmt.Printf("*** OK ***\n")
 		} else {
@@ -93,4 +94,5 @@ func main() {
 		dyn = (dyn + high_k0)
 	}
 
+	fmt.Printf("\n------	End of the Test		------\n")
 }
